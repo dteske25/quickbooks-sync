@@ -113,7 +113,7 @@ namespace QbSync.QbXml.Tests.QbXml
     </EmployeePayrollInfo>
 </EmployeeRet>";
             var response = new QbXmlResponse();
-            var rs = response.GetSingleItemFromResponse<EmployeeQueryRsType>(QuickBooksTestHelper.CreateQbXmlWithEnvelope(employeeRet, "EmployeeQueryRs"), true);
+            var rs = response.GetSingleItemFromResponse<EmployeeQueryRsType>(QuickBooksTestHelper.CreateQbXmlWithEnvelope(employeeRet, "EmployeeQueryRs"));
 
             var employees = rs.EmployeeRet;
             var employee = employees[0];
