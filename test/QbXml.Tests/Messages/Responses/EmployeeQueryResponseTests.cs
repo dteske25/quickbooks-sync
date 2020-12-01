@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using NUnit.Framework;
-using QbSync.QbXml;
+﻿﻿using NUnit.Framework;
 using QbSync.QbXml.Objects;
 using QbSync.QbXml.Tests.Helpers;
+using System;
+using System.Xml.Serialization;
 
 namespace QbSync.QbXml.Tests.QbXml
 {
@@ -113,14 +111,31 @@ namespace QbSync.QbXml.Tests.QbXml
     </EmployeePayrollInfo>
 </EmployeeRet>";
             var response = new QbXmlResponse();
-            var rs = response.GetSingleItemFromResponse<EmployeeQueryRsType>(QuickBooksTestHelper.CreateQbXmlWithEnvelope(employeeRet, "EmployeeQueryRs"));
+            var onUnknownElementCalled = 0;
+            XmlDeserializationEvents events = new XmlDeserializationEvents();
+            events.OnUnknownElement += (object sender, XmlElementEventArgs e) =>
+            {
+                onUnknownElementCalled++;
+                if (e.Element.Name == nameof(EmployeePayrollInfo.UseTimeDataToCreatePaychecks) && Enum.TryParse(typeof(UseTimeDataToCreatePaychecks), e.Element.InnerText, out object useTimeData))
+                {
+                    var employeePayrollInfo = (EmployeePayrollInfo)e.ObjectBeingDeserialized;
+                    employeePayrollInfo.UseTimeDataToCreatePaychecksSpecified = true;
+                    employeePayrollInfo.UseTimeDataToCreatePaychecks = (UseTimeDataToCreatePaychecks)useTimeData;
+                }
+            };
+            var rs = response.GetSingleItemFromResponse<EmployeeQueryRsType>(QuickBooksTestHelper.CreateQbXmlWithEnvelope(employeeRet, "EmployeeQueryRs"), events);
 
             var employees = rs.EmployeeRet;
             var employee = employees[0];
 
             Assert.AreEqual(1, employees.Length);
             Assert.AreEqual("1111111-111111111", employee.ListID);
-            Assert.AreEqual(true, employee.EmployeePayrollInfo.UseTimeDataToCreatePaychecksSpecified);
+
+            // Custom event handler was called at least once
+            Assert.GreaterOrEqual(onUnknownElementCalled, 1);
+
+            // Custom event handler updated a known property captured by the OnUnknownElement event
+            Assert.IsTrue(employee.EmployeePayrollInfo.UseTimeDataToCreatePaychecksSpecified);
             Assert.AreEqual(UseTimeDataToCreatePaychecks.UseTimeData, employee.EmployeePayrollInfo.UseTimeDataToCreatePaychecks);
         }
     }
